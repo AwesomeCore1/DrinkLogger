@@ -1,5 +1,13 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## 🔒 Security Update
+
+**Important:** Admin access has been secured with Firebase Authentication. See [SETUP_ADMIN.md](./SETUP_ADMIN.md) for setup instructions.
+
+- 🔐 Login page: `/admin`
+- 📊 Admin dashboard: `/admin/dashboard` (requires authentication)
+- 🔥 Firestore security rules configured to prevent unauthorized writes
+
 ## Getting Started
 
 First, run the development server:
