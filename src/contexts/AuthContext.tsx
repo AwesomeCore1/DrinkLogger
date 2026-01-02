@@ -27,11 +27,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
+      // Re-throw the error so the calling component can handle it
+      throw error;
+    }
   };
 
   const signOut = async () => {
-    await firebaseSignOut(auth);
+    try {
+      await firebaseSignOut(auth);
+    } catch (error: any) {
+      console.error('Sign out error:', error);
+      throw error;
+    }
   };
 
   return (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -16,10 +16,11 @@ export default function AdminLoginPage() {
   const router = useRouter();
 
   // Redirect if already logged in
-  if (user) {
-    router.push('/admin/dashboard');
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      router.push('/admin/dashboard');
+    }
+  }, [user, router]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
