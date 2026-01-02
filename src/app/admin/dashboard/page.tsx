@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect, use, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 import { 
   collection, 
   addDoc, 
@@ -18,7 +20,7 @@ import {
 import { db } from '@/firebase/config';
 import { Log, Category, DrinkType } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Settings, X, Plus, Trash2, History, Zap } from 'lucide-react';
+import { Search, Settings, X, Plus, Trash2, History, Zap, LogOut } from 'lucide-react';
 
 // --- COMPONENTS ---
 
@@ -89,9 +91,9 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }: { isO
 
 // --- MAIN PAGE ---
 
-export default function AdminPage({ params }: { params: Promise<{ secret: string }> }) {
-  const { secret } = use(params);
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
+export default function AdminDashboard() {
+  const { user, loading: authLoading, signOut } = useAuth();
+  const router = useRouter();
   
   // Data
   const [logs, setLogs] = useState<Log[]>([]);
@@ -114,14 +116,16 @@ export default function AdminPage({ params }: { params: Promise<{ secret: string
   const [newDrinkIcon, setNewDrinkIcon] = useState('🍺');
   const [settingsCatId, setSettingsCatId] = useState<string>('');
 
-  // Security Check
+  // Redirect if not authenticated
   useEffect(() => {
-    setAuthorized(secret === process.env.NEXT_PUBLIC_ADMIN_SECRET);
-  }, [secret]);
+    if (!authLoading && !user) {
+      router.push('/admin');
+    }
+  }, [user, authLoading, router]);
 
   // Data Fetching
   useEffect(() => {
-    if (!authorized) return;
+    if (!user) return;
 
     const unsubLogs = onSnapshot(query(collection(db, 'logs'), orderBy('created_at', 'desc'), limit(100)), (snap) => {
       setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as Log)));
@@ -132,7 +136,7 @@ export default function AdminPage({ params }: { params: Promise<{ secret: string
     });
 
     return () => { unsubLogs(); unsubCats(); };
-  }, [authorized]);
+  }, [user]);
 
   // --- COMPUTED DATA ---
 
@@ -283,10 +287,28 @@ export default function AdminPage({ params }: { params: Promise<{ secret: string
     });
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.push('/admin');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   // --- RENDER ---
 
-  if (authorized === null) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500">Laden...</div>;
-  if (authorized === false) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-red-500 font-bold">TOEGANG GEWEIGERD</div>;
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500">
+        Laden...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Will redirect in useEffect
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-20">
@@ -320,6 +342,13 @@ export default function AdminPage({ params }: { params: Promise<{ secret: string
             className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <Settings size={20} />
+          </button>
+          <button 
+            onClick={handleLogout}
+            className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors"
+            title="Uitloggen"
+          >
+            <LogOut size={20} />
           </button>
         </div>
       </header>
