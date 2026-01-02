@@ -2,13 +2,12 @@ import { initializeApp, getApps } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  // REPLACE THESE WITH YOUR VALUES FROM FIREBASE CONSOLE
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+  apiKey: "AIzaSyCqTq_FQJ5_CXuic_ixr7m8ZkD4K7mkMtg",
+  authDomain: "drinklogger-36574214.firebaseapp.com",
+  projectId: "drinklogger-36574214",
+  storageBucket: "drinklogger-36574214.firebasestorage.app",
+  messagingSenderId: "1059737587186",
+  appId: "1:1059737587186:web:18252280ab6ed2b5146f6b"
 };
 
 // Initialize Firebase (prevent re-initialization during hot-reloads)
