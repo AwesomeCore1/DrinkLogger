@@ -104,6 +104,7 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [addingId, setAddingId] = useState<string | null>(null);
   
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void }>({
@@ -139,6 +140,32 @@ export default function AdminDashboard() {
   }, [user]);
 
   // --- COMPUTED DATA ---
+
+  // Stats & Date Formatter
+  const { todayCount, totalCount } = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return {
+      todayCount: logs.filter(l => l.created_at?.toDate() >= todayStart).length,
+      totalCount: logs.length
+    };
+  }, [logs]);
+
+  const formatLogDate = (timestamp: any) => {
+    if (!timestamp) return '';
+    const date = timestamp.toDate();
+    const now = new Date();
+    const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
+
+    const timeStr = date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+    
+    if (isToday) return `Vandaag ${timeStr}`;
+    if (isYesterday) return `Gisteren ${timeStr}`;
+    return `${date.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })} ${timeStr}`;
+  };
 
   // Speed Dial: Top 3 most frequent drinks
   const speedDialDrinks = useMemo(() => {
@@ -181,7 +208,9 @@ export default function AdminDashboard() {
 
   // --- ACTIONS ---
 
-  const handleAddLog = async (drink: DrinkType) => {
+  const handleAddLog = async (drink: DrinkType, uniqueId: string) => {
+    if (addingId) return;
+    setAddingId(uniqueId);
     try {
       await addDoc(collection(db, 'logs'), {
         drink_name: drink.name,
@@ -192,6 +221,8 @@ export default function AdminDashboard() {
       setToastMessage(`${drink.name} toegevoegd! 🚀`);
     } catch (error) {
       console.error(error);
+    } finally {
+      setAddingId(null);
     }
   };
 
@@ -326,7 +357,7 @@ export default function AdminDashboard() {
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800 p-4">
-        <div className="max-w-md mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
             <input 
@@ -353,98 +384,172 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="max-w-md mx-auto p-4 space-y-6">
-        
-        {/* Speed Dial */}
-        {!searchQuery && speedDialDrinks.length > 0 && (
-          <section>
-            <div className="flex items-center gap-2 mb-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
-              <Zap size={14} className="text-yellow-500" />
-              <span>Snel Toevoegen</span>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              {speedDialDrinks.map((drink, idx) => (
-                <motion.button
-                  key={`speed-${idx}`}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handleAddLog(drink)}
-                  className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl shadow-lg hover:border-cyan-500/30 transition-colors"
-                >
-                  <span className="text-3xl mb-2">{drink.icon}</span>
-                  <span className="text-xs font-bold text-slate-300 truncate w-full text-center">{drink.name}</span>
-                </motion.button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Categories Tabs */}
-        {!searchQuery && (
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
-            <button
-              onClick={() => setSelectedCategoryId('all')}
-              className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
-                selectedCategoryId === 'all' 
-                  ? 'bg-white text-slate-900 shadow-lg shadow-white/10' 
-                  : 'bg-slate-900 text-slate-400 border border-slate-800'
-              }`}
-            >
-              Alles
-            </button>
-            {categories.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategoryId(cat.id)}
-                className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
-                  selectedCategoryId === cat.id 
-                    ? 'bg-white text-slate-900 shadow-lg shadow-white/10' 
-                    : 'bg-slate-900 text-slate-400 border border-slate-800'
-                }`}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Main Grid */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-          {filteredDrinks.map((drink, idx) => (
-            <motion.button
-              key={`${drink.id}-${idx}`}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => handleAddLog(drink)}
-              className="aspect-square flex flex-col items-center justify-center p-2 bg-slate-900/50 border border-slate-800 rounded-2xl hover:bg-slate-800 hover:border-slate-700 transition-colors"
-            >
-              <span className="text-3xl mb-2 filter drop-shadow-md">{drink.icon}</span>
-              <span className="text-[10px] font-medium text-slate-400 text-center leading-tight line-clamp-2">{drink.name}</span>
-            </motion.button>
-          ))}
-        </div>
-
-        {/* Recent History (Mini) */}
-        <section className="pt-8 border-t border-slate-800/50">
-          <div className="flex items-center gap-2 mb-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
-            <History size={14} />
-            <span>Recente Activiteit</span>
-          </div>
-          <div className="space-y-2">
-            {logs.slice(0, 5).map(log => (
-              <div key={log.id} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-xl border border-slate-800/50">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">{log.icon}</span>
-                  <span className="text-sm font-medium text-slate-300">{log.drink_name}</span>
+      <main className="max-w-7xl mx-auto p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Sidebar */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Quick Stats */}
+            {!searchQuery && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Vandaag</span>
+                  <span className="text-2xl font-black text-cyan-400">{todayCount}</span>
                 </div>
-                <button 
-                  onClick={() => handleDeleteLog(log.id)}
-                  className="p-2 text-slate-600 hover:text-red-400 transition-colors"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Totaal</span>
+                  <span className="text-2xl font-black text-purple-400">{totalCount}</span>
+                </div>
               </div>
-            ))}
+            )}
+
+            {/* Categories */}
+            {!searchQuery && (
+              <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Categorieën</h3>
+                <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 scrollbar-hide -mx-4 px-4 lg:mx-0 lg:px-0">
+                  <button
+                    onClick={() => setSelectedCategoryId('all')}
+                    className={`px-4 py-2 rounded-full lg:rounded-xl text-sm font-bold whitespace-nowrap text-left transition-all ${
+                      selectedCategoryId === 'all' 
+                        ? 'bg-white text-slate-900 shadow-lg shadow-white/10' 
+                        : 'bg-slate-900 text-slate-400 border border-slate-800 hover:bg-slate-800'
+                    }`}
+                  >
+                    Alles
+                  </button>
+                  {categories.map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategoryId(cat.id)}
+                      className={`px-4 py-2 rounded-full lg:rounded-xl text-sm font-bold whitespace-nowrap text-left transition-all ${
+                        selectedCategoryId === cat.id 
+                          ? 'bg-white text-slate-900 shadow-lg shadow-white/10' 
+                          : 'bg-slate-900 text-slate-400 border border-slate-800 hover:bg-slate-800'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Recent History (Desktop) */}
+            <section className="hidden lg:block bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <History size={14} />
+                <span>Recente Activiteit</span>
+              </div>
+              <div className="space-y-2">
+                {logs.slice(0, 10).map(log => (
+                  <div key={log.id} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-xl border border-slate-800/50">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <span className="text-xl flex-shrink-0">{log.icon}</span>
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="text-sm font-medium text-slate-300 truncate">{log.drink_name}</span>
+                        <span className="text-xs text-slate-500">{formatLogDate(log.created_at)}</span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleDeleteLog(log.id)}
+                      className="p-2 text-slate-600 hover:text-red-400 transition-colors flex-shrink-0"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
-        </section>
+
+          {/* Main Content */}
+          <div className="lg:col-span-9 space-y-6">
+            {/* Speed Dial */}
+            {!searchQuery && speedDialDrinks.length > 0 && (
+              <section>
+                <div className="flex items-center gap-2 mb-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <Zap size={14} className="text-yellow-500" />
+                  <span>Snel Toevoegen</span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                  {speedDialDrinks.map((drink, idx) => {
+                    const uniqueId = `speed-${idx}`;
+                    const isLoading = addingId === uniqueId;
+                    return (
+                    <motion.button
+                      key={uniqueId}
+                      whileTap={{ scale: 0.95 }}
+                      disabled={!!addingId}
+                      onClick={() => handleAddLog(drink, uniqueId)}
+                      className={`flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl shadow-lg transition-colors ${
+                        !!addingId ? 'opacity-50 cursor-not-allowed' : 'hover:border-cyan-500/30'
+                      }`}
+                    >
+                      {isLoading ? (
+                        <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mb-2" />
+                      ) : (
+                        <span className="text-3xl mb-2">{drink.icon}</span>
+                      )}
+                      <span className="text-xs font-bold text-slate-300 truncate w-full text-center">{drink.name}</span>
+                    </motion.button>
+                  )})}
+                </div>
+              </section>
+            )}
+
+            {/* Main Grid */}
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+              {filteredDrinks.map((drink, idx) => {
+                const uniqueId = `${drink.id}-${idx}`;
+                const isLoading = addingId === uniqueId;
+                return (
+                <motion.button
+                  key={uniqueId}
+                  whileTap={{ scale: 0.9 }}
+                  disabled={!!addingId}
+                  onClick={() => handleAddLog(drink, uniqueId)}
+                  className={`aspect-square flex flex-col items-center justify-center p-2 bg-slate-900/50 border border-slate-800 rounded-2xl transition-colors ${
+                    !!addingId ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  {isLoading ? (
+                    <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mb-2" />
+                  ) : (
+                    <span className="text-3xl mb-2 filter drop-shadow-md">{drink.icon}</span>
+                  )}
+                  <span className="text-xs font-medium text-slate-400 text-center leading-tight line-clamp-2">{drink.name}</span>
+                </motion.button>
+              )})}
+            </div>
+
+            {/* Mobile History */}
+            <section className="lg:hidden pt-8 border-t border-slate-800/50">
+              <div className="flex items-center gap-2 mb-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <History size={14} />
+                <span>Recente Activiteit</span>
+              </div>
+              <div className="space-y-2">
+                {logs.slice(0, 5).map(log => (
+                  <div key={log.id} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-xl border border-slate-800/50">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{log.icon}</span>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-slate-300">{log.drink_name}</span>
+                        <span className="text-xs text-slate-500">{formatLogDate(log.created_at)}</span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleDeleteLog(log.id)}
+                      className="p-2 text-slate-600 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        </div>
       </main>
 
       {/* Settings Modal */}
