@@ -11,8 +11,8 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const { signIn, user } = useAuth();
+  const [formLoading, setFormLoading] = useState(false);
+  const { signIn, user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   // Redirect if already logged in
@@ -20,16 +20,24 @@ export default function AdminLoginPage() {
     if (user) {
       router.push('/admin/dashboard');
     }
-  }, [user, router]);
+  }, [user, router]); // Keep router in dep array
+
+  if (authLoading || user) {
+     return (
+       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400"></div>
+       </div>
+     );
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
+    setFormLoading(true);
 
     try {
       await signIn(email, password);
-      router.push('/admin/dashboard');
+      // Don't manually redirect here, let the useEffect handle it to avoid race conditions
     } catch (err: any) {
       console.error('Login error:', err);
       if (err.code === 'auth/invalid-credential') {
@@ -39,17 +47,16 @@ export default function AdminLoginPage() {
       } else {
         setError('Er is iets misgegaan. Probeer het opnieuw.');
       }
-    } finally {
-      setLoading(false);
+      setFormLoading(false); // Only stop loading on error
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex items-center justify-center p-4">
       {/* Background Gradients */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-900/20 rounded-full blur-[120px]" />
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-50">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 rounded-full blur-[60px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-900/20 rounded-full blur-[60px]" />
       </div>
 
       <motion.div 
@@ -97,7 +104,7 @@ export default function AdminLoginPage() {
                   required
                   className="w-full bg-slate-900/50 border border-slate-800 rounded-xl pl-11 pr-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all"
                   placeholder="admin@example.com"
-                  disabled={loading}
+                  disabled={formLoading}
                 />
               </div>
             </div>
@@ -117,13 +124,13 @@ export default function AdminLoginPage() {
                   required
                   className="w-full bg-slate-900/50 border border-slate-800 rounded-xl pl-11 pr-12 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all"
                   placeholder="••••••••"
-                  disabled={loading}
+                  disabled={formLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                  disabled={loading}
+                  disabled={formLoading}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -133,10 +140,10 @@ export default function AdminLoginPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={formLoading}
               className="w-full mt-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Bezig met inloggen...' : 'Inloggen'}
+              {formLoading ? 'Bezig met inloggen...' : 'Inloggen'}
             </button>
           </form>
 

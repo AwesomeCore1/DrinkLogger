@@ -331,9 +331,9 @@ export default function AdminDashboard() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500">
-        Laden...
-      </div>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400"></div>
+       </div>
     );
   }
 
@@ -356,7 +356,7 @@ export default function AdminDashboard() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800 p-4">
+      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-sm border-b border-slate-800 p-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
@@ -476,12 +476,11 @@ export default function AdminDashboard() {
                     const uniqueId = `speed-${idx}`;
                     const isLoading = addingId === uniqueId;
                     return (
-                    <motion.button
+                    <button
                       key={uniqueId}
-                      whileTap={{ scale: 0.95 }}
                       disabled={!!addingId}
                       onClick={() => handleAddLog(drink, uniqueId)}
-                      className={`flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl shadow-lg transition-colors ${
+                      className={`flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl shadow-lg transition-transform active:scale-95 ${
                         !!addingId ? 'opacity-50 cursor-not-allowed' : 'hover:border-cyan-500/30'
                       }`}
                     >
@@ -491,7 +490,7 @@ export default function AdminDashboard() {
                         <span className="text-3xl mb-2">{drink.icon}</span>
                       )}
                       <span className="text-xs font-bold text-slate-300 truncate w-full text-center">{drink.name}</span>
-                    </motion.button>
+                    </button>
                   )})}
                 </div>
               </section>
@@ -503,12 +502,11 @@ export default function AdminDashboard() {
                 const uniqueId = `${drink.id}-${idx}`;
                 const isLoading = addingId === uniqueId;
                 return (
-                <motion.button
+                <button
                   key={uniqueId}
-                  whileTap={{ scale: 0.9 }}
                   disabled={!!addingId}
                   onClick={() => handleAddLog(drink, uniqueId)}
-                  className={`aspect-square flex flex-col items-center justify-center p-2 bg-slate-900/50 border border-slate-800 rounded-2xl transition-colors ${
+                  className={`aspect-square flex flex-col items-center justify-center p-2 bg-slate-900/50 border border-slate-800 rounded-2xl transition-all active:scale-95 ${
                     !!addingId ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-800 hover:border-slate-700'
                   }`}
                 >
@@ -518,7 +516,7 @@ export default function AdminDashboard() {
                     <span className="text-3xl mb-2 filter drop-shadow-md">{drink.icon}</span>
                   )}
                   <span className="text-xs font-medium text-slate-400 text-center leading-tight line-clamp-2">{drink.name}</span>
-                </motion.button>
+                </button>
               )})}
             </div>
 
