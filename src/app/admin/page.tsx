@@ -12,22 +12,48 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
-  const { signIn, user, loading: authLoading } = useAuth();
+  const { signIn, signOut, user, loading: authLoading, isAdmin, adminLoading } = useAuth();
   const router = useRouter();
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
+    if (user && !adminLoading && isAdmin) {
       router.push('/admin/dashboard');
     }
-  }, [user, router]); // Keep router in dep array
+  }, [user, isAdmin, adminLoading, router]); // Keep router in dep array
 
-  if (authLoading || user) {
+  if (authLoading || adminLoading) {
      return (
        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400"></div>
        </div>
      );
+  }
+
+  if (user && !isAdmin) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-8 text-center">
+          <h1 className="text-2xl font-black tracking-tight mb-2">Geen toegang</h1>
+          <p className="text-slate-400 text-sm mb-6">
+            Dit account heeft geen admin-rechten. Log uit en meld je aan met een admin-account.
+          </p>
+          <button
+            onClick={async () => {
+              await signOut();
+            }}
+            className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors"
+          >
+            Uitloggen
+          </button>
+          <div className="mt-6 text-center">
+            <a href="/" className="text-sm text-slate-400 hover:text-cyan-400 transition-colors">
+              ← Terug naar dashboard
+            </a>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const handleSubmit = async (e: FormEvent) => {

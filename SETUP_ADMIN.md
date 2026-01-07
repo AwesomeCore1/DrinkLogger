@@ -43,6 +43,50 @@ firebase init firestore
 firebase deploy --only firestore:rules
 ```
 
+### 3b. Mark Your Account As Admin (Required)
+
+Firestore writes are now **admin-only** via a Firebase custom claim:
+
+- Required claim: `admin: true`
+
+You can set this claim using the Firebase Admin SDK from a trusted environment.
+
+1. Create a service account key in Firebase Console → Project Settings → Service accounts.
+2. Save it as `serviceAccountKey.json` (do not commit it).
+3. Install the Admin SDK and run a small script:
+
+```bash
+npm install firebase-admin
+node setAdminClaim.js <ADMIN_UID>
+```
+
+Example `setAdminClaim.js`:
+
+```js
+const admin = require('firebase-admin');
+
+admin.initializeApp({
+	credential: admin.credential.cert(require('./serviceAccountKey.json')),
+});
+
+const uid = process.argv[2];
+if (!uid) throw new Error('Pass the UID: node setAdminClaim.js <UID>');
+
+admin
+	.auth()
+	.setCustomUserClaims(uid, { admin: true })
+	.then(() => {
+		console.log('✅ Admin claim set');
+		process.exit(0);
+	})
+	.catch((err) => {
+		console.error(err);
+		process.exit(1);
+	});
+```
+
+After setting the claim, sign out/in again in the app to refresh the token.
+
 ### 4. Access the Admin Panel
 
 1. Navigate to `/admin` on your site
@@ -55,7 +99,7 @@ firebase deploy --only firestore:rules
 
 - ✅ **Firebase Authentication**: Proper email/password authentication instead of URL-based secrets
 - ✅ **Protected Routes**: Admin dashboard only accessible to authenticated users
-- ✅ **Firestore Security Rules**: Database writes are now restricted to authenticated users only
+- ✅ **Firestore Security Rules**: Database writes are now restricted to admin users only (custom claim)
 - ✅ **Login Page**: Clean, modern login interface at `/admin`
 - ✅ **Logout Functionality**: Users can securely log out from the dashboard
 
@@ -91,5 +135,6 @@ You can now safely remove the old admin page:
 ### Database Writes Not Working?
 
 - Ensure you're logged in
+- Ensure your user has the `admin: true` custom claim
 - Deploy the Firestore security rules using `firebase deploy --only firestore:rules`
 - Check the Firebase Console logs for security rule violations

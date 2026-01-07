@@ -10,7 +10,8 @@
   "dependencies": {
     "canvas-confetti": "^1.9.4",
     "firebase": "^12.7.0",
-    "framer-motion": "^12.24.0",
+    "firebase-admin": "^13.6.0",
+    "framer-motion": "^12.24.7",
     "lucide-react": "^0.562.0",
     "next": "16.0.8",
     "react": "19.2.1",

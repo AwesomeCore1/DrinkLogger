@@ -2,18 +2,22 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
     // Public read access for logs (for the public dashboard)
     match /logs/{logId} {
       allow read: if true;
-      // Only authenticated users can write/delete logs
-      allow write, delete: if request.auth != null;
+      // Only admins can write/delete logs
+      allow write: if isAdmin();
     }
     
     // Public read access for categories (for the public dashboard)
     match /categories/{categoryId} {
       allow read: if true;
-      // Only authenticated users can write/delete categories
-      allow write, delete: if request.auth != null;
+      // Only admins can write/delete categories
+      allow write: if isAdmin();
     }
   }
 }
