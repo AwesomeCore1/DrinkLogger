@@ -61,7 +61,7 @@ function CompactLogCard({ log, isLatest, reactorId, reactingOn, onToggleReaction
               const count = users.length;
               const hasReacted = users.includes(reactorId);
               const isGhost = count === 0 && !hasReacted;
-              const isThisReacting = reactingOn === `${log.id}-${emoji}`;
+              const isThisReacting = reactingOn === getReactionKey(log.id, emoji);
 
               // Base classes for the reaction button
               const baseClasses = 'text-[11px] sm:text-[10px] px-2 py-1 sm:px-1.5 sm:py-0.5 rounded flex items-center gap-1 transition-all min-h-[28px] sm:min-h-0 min-w-[28px] sm:min-w-0 touch-manipulation';
@@ -121,6 +121,10 @@ function SkeletonBlock({ className, transparent = false }: { className: string; 
 }
 
 /* --- Helpers --- */
+
+function getReactionKey(logId: string, emoji: string): string {
+  return `${logId}-${emoji}`;
+}
 
 function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -256,7 +260,7 @@ export default function HomePage() {
   const toggleReaction = async (logId: string, emoji: string, alreadyReacted: boolean) => {
     if (!reactorId) return;
     
-    const key = `${logId}-${emoji}`;
+    const key = getReactionKey(logId, emoji);
     
     // Prevent multiple simultaneous requests for the same reaction using ref for synchronous check
     if (reactingRef.current.has(key)) return;
