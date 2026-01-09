@@ -161,6 +161,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [reactorId, setReactorId] = useState<string>('');
   const [reactingOn, setReactingOn] = useState<string | null>(null);
+  const reactingRef = React.useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const yearStart = startOfYear(new Date());
@@ -256,10 +257,13 @@ export default function HomePage() {
     if (!reactorId) return;
     
     const key = `${logId}-${emoji}`;
-    // Prevent multiple simultaneous requests for the same reaction
-    if (reactingOn === key) return;
     
+    // Prevent multiple simultaneous requests for the same reaction using ref for synchronous check
+    if (reactingRef.current.has(key)) return;
+    
+    reactingRef.current.add(key);
     setReactingOn(key);
+    
     try {
       const ref = doc(db, 'logs', logId);
       if (alreadyReacted) {
@@ -270,6 +274,7 @@ export default function HomePage() {
     } catch (err) {
       console.error('Reaction error', err);
     } finally {
+      reactingRef.current.delete(key);
       setReactingOn(null);
     }
   };
