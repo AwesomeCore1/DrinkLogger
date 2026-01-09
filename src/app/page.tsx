@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { arrayRemove, arrayUnion, collection, doc, limit, onSnapshot, orderBy, query, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { Log } from '@/types';
@@ -49,7 +49,7 @@ function CompactLogCard({ log, isLatest, reactorId, reactingOn, onToggleReaction
       {/* Content */}
       <div className="flex-grow min-w-0 flex flex-col justify-center">
         <div className="flex items-center justify-between gap-2">
-          <h4 className="text-sm font-semibold text-slate-200 truncate leading-tight">{log.drink_name}</h4>
+          <h4 className="text-sm font-semibold text-slate-200 truncate leading-tight">{sanitizeName(log.drink_name)}</h4>
           <span className="text-xs font-medium text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">+1</span>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
@@ -61,13 +61,16 @@ function CompactLogCard({ log, isLatest, reactorId, reactingOn, onToggleReaction
               const count = users.length;
               const hasReacted = users.includes(reactorId);
               const isGhost = count === 0 && !hasReacted;
+              // Check if THIS specific button is the one currently loading
+              const isLoading = reactingOn === log.id + emoji;
 
               return (
                 <button
                   key={emoji}
                   onClick={() => onToggleReaction(log.id, emoji, hasReacted)}
-                  disabled={!!reactingOn}
+                  disabled={!!reactingOn} // Disable all reaction buttons while any request is flying to prevent spam
                   className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 transition-all
+                    ${isLoading ? 'opacity-50 cursor-wait' : ''}
                     ${hasReacted 
                       ? 'bg-indigo-500/20 text-indigo-200' 
                       : isGhost 
@@ -94,7 +97,7 @@ function FavoriteItem({ name, count, index }: { name: string; count: number; ind
         {index + 1}
       </div>
       <div className="flex-grow min-w-0">
-        <div className="text-sm font-medium text-slate-200 truncate">{name}</div>
+        <div className="text-sm font-medium text-slate-200 truncate">{sanitizeName(name)}</div>
         <div className="h-1.5 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
           <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" style={{ width: `${Math.min(100, count * 5)}%` }} />
         </div>
@@ -109,6 +112,10 @@ function SkeletonBlock({ className, transparent = false }: { className: string; 
 }
 
 /* --- Helpers --- */
+
+function sanitizeName(name: string) {
+  return name.replace(/kanker/gi, '******');
+}
 
 function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -148,7 +155,12 @@ export default function HomePage() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [loading, setLoading] = useState(true);
   const [reactorId, setReactorId] = useState<string>('');
+  
+  // State voor UI feedback (disabled buttons)
   const [reactingOn, setReactingOn] = useState<string | null>(null);
+  
+  // Ref voor echte locking (voorkomt double-clicks en race conditions)
+  const reactingMutex = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const yearStart = startOfYear(new Date());
@@ -170,14 +182,15 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    const stored = typeof window !== 'undefined' ? window.localStorage.getItem('dl_reactor_id') : null;
-    if (stored) {
-      setReactorId(stored);
-      return;
+    // Check localStorage direct om te voorkomen dat React Strict Mode rare dingen doet
+    if (typeof window !== 'undefined') {
+      let id = window.localStorage.getItem('dl_reactor_id');
+      if (!id) {
+        id = generateUUID();
+        window.localStorage.setItem('dl_reactor_id', id);
+      }
+      setReactorId(id);
     }
-    const id = generateUUID();
-    setReactorId(id);
-    if (typeof window !== 'undefined') window.localStorage.setItem('dl_reactor_id', id);
   }, []);
 
   /* --- Calculations --- */
@@ -191,18 +204,6 @@ export default function HomePage() {
     const week = logs.filter((l) => l.created_at?.toDate && l.created_at.toDate() >= weekStart).length;
 
     return { today, week };
-  }, [logs]);
-
-  const weekSeries = useMemo(() => {
-    const now = new Date();
-    const days = Array.from({ length: 7 }).map((_, i) => {
-      const d = new Date(now);
-      d.setDate(d.getDate() - (6 - i));
-      return d;
-    });
-    const values = days.map((d) => logs.filter((l) => l.created_at?.toDate && sameDay(l.created_at.toDate(), d)).length);
-    const labels = days.map((d) => formatShortDayNL(d));
-    return { labels, values };
   }, [logs]);
 
   const currentStreak = useMemo(() => {
@@ -241,8 +242,17 @@ export default function HomePage() {
   }, [logs]);
 
   const toggleReaction = async (logId: string, emoji: string, alreadyReacted: boolean) => {
-    if (!reactorId || reactingOn) return;
-    setReactingOn(logId + emoji);
+    if (!reactorId) return;
+
+    const lockKey = `${logId}-${emoji}`;
+
+    // 1. Check de Ref mutex. Als deze key al bezig is: STOP.
+    if (reactingMutex.current.has(lockKey)) return;
+
+    // 2. Locken
+    reactingMutex.current.add(lockKey);
+    setReactingOn(lockKey); // Voor de UI disabled state
+
     try {
       const ref = doc(db, 'logs', logId);
       if (alreadyReacted) {
@@ -253,6 +263,8 @@ export default function HomePage() {
     } catch (err) {
       console.error('Reaction error', err);
     } finally {
+      // 3. Unlocken (altijd, ook bij errors)
+      reactingMutex.current.delete(lockKey);
       setReactingOn(null);
     }
   };
