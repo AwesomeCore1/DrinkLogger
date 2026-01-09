@@ -61,19 +61,22 @@ function CompactLogCard({ log, isLatest, reactorId, reactingOn, onToggleReaction
               const count = users.length;
               const hasReacted = users.includes(reactorId);
               const isGhost = count === 0 && !hasReacted;
+              const isThisReacting = reactingOn === log.id + emoji;
 
               return (
                 <button
                   key={emoji}
                   onClick={() => onToggleReaction(log.id, emoji, hasReacted)}
                   disabled={!!reactingOn}
-                  className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 transition-all
+                  className={`text-[11px] sm:text-[10px] px-2 py-1 sm:px-1.5 sm:py-0.5 rounded flex items-center gap-1 transition-all min-h-[28px] sm:min-h-0 min-w-[28px] sm:min-w-0 touch-manipulation
                     ${hasReacted 
                       ? 'bg-indigo-500/20 text-indigo-200' 
                       : isGhost 
                         ? 'opacity-0 group-hover:opacity-100 text-slate-600 hover:bg-white/5 hover:text-slate-400' 
                         : 'bg-white/5 text-slate-400 hover:bg-white/10'
-                    }`}
+                    }
+                    ${isThisReacting ? 'opacity-50 cursor-wait' : ''}
+                    ${!!reactingOn && !isThisReacting ? 'opacity-50' : ''}`}
                 >
                   <span>{emoji}</span>
                   {(count > 0 || hasReacted) && <span>{count}</span>}
@@ -241,8 +244,13 @@ export default function HomePage() {
   }, [logs]);
 
   const toggleReaction = async (logId: string, emoji: string, alreadyReacted: boolean) => {
-    if (!reactorId || reactingOn) return;
-    setReactingOn(logId + emoji);
+    if (!reactorId) return;
+    
+    const key = logId + emoji;
+    // Prevent multiple simultaneous requests for the same reaction
+    if (reactingOn === key) return;
+    
+    setReactingOn(key);
     try {
       const ref = doc(db, 'logs', logId);
       if (alreadyReacted) {
