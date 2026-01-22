@@ -78,7 +78,7 @@ export default function DashboardClient() {
     setCatsLoaded(false);
 
     const unsubLogs = onSnapshot(
-      query(collection(db, 'logs'), orderBy('created_at', 'desc'), limit(100)),
+      query(collection(db, 'logs'), orderBy('created_at', 'desc'), limit(1000)),
       (snap) => {
         setLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Log)));
         setLogsLoaded(true);

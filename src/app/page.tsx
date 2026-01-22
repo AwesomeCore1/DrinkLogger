@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { arrayRemove, arrayUnion, collection, doc, limit, onSnapshot, orderBy, query, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { arrayRemove, arrayUnion, collection, doc, limit, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { Log } from '@/types';
 import { daysInMonth, formatShortDayNL, formatShortMonthNL, startOfMonth, startOfWeek, startOfYear } from '@/utils/date';
@@ -163,12 +163,10 @@ export default function HomePage() {
   const reactingMutex = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const yearStart = startOfYear(new Date());
     const q = query(
       collection(db, 'logs'),
-      where('created_at', '>=', Timestamp.fromDate(yearStart)),
       orderBy('created_at', 'desc'),
-      limit(200),
+      limit(1000)
     );
     const unsub = onSnapshot(
       q,
@@ -199,11 +197,15 @@ export default function HomePage() {
     const now = new Date();
     const dayStart = startOfDay(now);
     const weekStart = startOfWeek(now);
+    const monthStart = startOfMonth(now);
+    const yearStart = startOfYear(now);
 
     const today = logs.filter((l) => l.created_at?.toDate && l.created_at.toDate() >= dayStart).length;
     const week = logs.filter((l) => l.created_at?.toDate && l.created_at.toDate() >= weekStart).length;
+    const month = logs.filter((l) => l.created_at?.toDate && l.created_at.toDate() >= monthStart).length;
+    const year = logs.filter((l) => l.created_at?.toDate && l.created_at.toDate() >= yearStart).length;
 
-    return { today, week };
+    return { today, week, month, year };
   }, [logs]);
 
   const currentStreak = useMemo(() => {
@@ -299,19 +301,22 @@ export default function HomePage() {
           </div>
         </header>
 
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <MetricCard 
             label="Vandaag" 
             value={totals.today} 
           />
           <MetricCard 
-            label="Deze Week" 
+            label="Week" 
             value={totals.week} 
           />
-          <MetricCard
-            label="Totaal Reacties"
-            value={reactionTotal}
-            trend="All time"
+          <MetricCard 
+            label="Maand" 
+            value={totals.month} 
+          />
+          <MetricCard 
+            label="Jaar" 
+            value={totals.year} 
           />
         </section>
 

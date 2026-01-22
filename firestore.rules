@@ -9,8 +9,9 @@ service cloud.firestore {
     // Public read access for logs (for the public dashboard)
     match /logs/{logId} {
       allow read: if true;
-      // Only admins can write/delete logs
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      // Allow admins to update anything, OR allow public to update ONLY the 'reactions' field
+      allow update: if isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']));
     }
     
     // Public read access for categories (for the public dashboard)
